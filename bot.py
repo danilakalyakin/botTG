@@ -73,7 +73,7 @@ def index():
 
 def run_scheduler():
     scheduler = BackgroundScheduler()
-    scheduler.add_job(send_post, 'interval', seconds=10)
+    scheduler.add_job(send_post, 'interval', hours=1)
     scheduler.start()
     logging.info("Планировщик активирован")
     while True:
