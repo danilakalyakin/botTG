@@ -1,5 +1,3 @@
-from flask import Flask
-import threading
 import logging
 import openai
 import random
@@ -7,35 +5,12 @@ from telegram import Bot
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 import os
-
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return "Бот работает"
-
-def run_scheduler():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(send_post, 'interval', seconds=10)
-    scheduler.start()
-    logging.info("Бот запущен и планировщик активирован.")
-    while True:
-        time.sleep(10)
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
-    # Запускаем планировщик в отдельном потоке
-    threading.Thread(target=run_scheduler).start()
-
-    # Запускаем фейковый веб-сервер на порту, который ожидает Render
-    port = int(os.environ.get("PORT", 10000))  # Render подставит переменную PORT
-    app.run(host="0.0.0.0", port=port)
+from flask import Flask
+import threading
 
 # ========== НАСТРОЙКИ ==========
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-
 CHANNELS = ['@repkdsmat', '@repkdsinf']
 
 openai.api_key = OPENAI_API_KEY
@@ -73,31 +48,40 @@ def generate_post():
 
 # ========== ОТПРАВКА ==========
 def send_post():
-    logging.info(f"Генерируется пост...")
+    logging.info("Генерируется пост...")
     post = generate_post()
     if post:
         for channel in CHANNELS:
             try:
                 bot.send_message(chat_id=channel, text=post)
                 logging.info(f"Отправлено в {channel}")
-                logging.info(f"Содержание поста:\n{post}")
+                logging.info(f"Содержание:\n{post}")
             except Exception as e:
                 logging.error(f"Ошибка отправки в {channel}: {e}")
     else:
         logging.warning("Пост не сгенерирован.")
 
-# ========== ЗАПУСК ==========
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+# ========== ФЛАСК СЕРВЕР ==========
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Бот работает"
+
+def run_scheduler():
     scheduler = BackgroundScheduler()
     scheduler.add_job(send_post, 'interval', seconds=10)
     scheduler.start()
+    logging.info("Планировщик активирован")
+    while True:
+        time.sleep(10)
 
-    logging.info("Бот запущен и планировщик активирован.")
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
 
-    try:
-        while True:
-            time.sleep(10)
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        logging.info("Бот остановлен.")
+    # Запускаем планировщик в отдельном потоке
+    threading.Thread(target=run_scheduler).start()
+
+    # Запускаем фейковый веб-сервер
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
