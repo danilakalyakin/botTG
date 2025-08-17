@@ -1,13 +1,13 @@
 import logging
 import openai
 import random
-from telegram import Bot
-from apscheduler.schedulers.background import BackgroundScheduler
-import time
-
-# ========== НАСТРОЙКИ ==========
+import asyncio
 import os
 
+from telegram.ext import ApplicationBuilder
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+# ========== НАСТРОЙКИ ==========
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
@@ -15,7 +15,6 @@ CHANNELS = ['@your_math_channel', '@your_inf_channel']  # Список кана�
 POST_INTERVAL_HOURS = 2
 
 openai.api_key = OPENAI_API_KEY
-bot = Bot(token=TELEGRAM_TOKEN)
 
 # ========== СТИЛЬ ОБУЧЕНИЯ ==========
 STYLE_MESSAGES = [
@@ -50,13 +49,13 @@ def generate_post():
         return None
 
 
-# ========== ФУНКЦИЯ ОТПРАВКИ ==========
-def send_post():
+# ========== АСИНХРОННАЯ ФУНКЦИЯ ОТПРАВКИ ==========
+async def send_post(app):
     post = generate_post()
     if post:
         for channel in CHANNELS:
             try:
-                bot.send_message(chat_id=channel, text=post)
+                await app.bot.send_message(chat_id=channel, text=post)
                 logging.info(f"Отправлено в {channel}")
             except Exception as e:
                 logging.error(f"Ошибка отправки в {channel}: {e}")
@@ -64,19 +63,19 @@ def send_post():
         logging.warning("Пост не сгенерирован.")
 
 
-# ========== НАСТРОЙКА ПЛАНИРОВЩИКА ==========
-if __name__ == "__main__":
+# ========== ОСНОВНАЯ ТОЧКА ЗАПУСКА ==========
+async def main():
     logging.basicConfig(level=logging.INFO)
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(send_post, 'interval', hours=POST_INTERVAL_HOURS)
+
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
+    # Планировщик с асинхронной задачей
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(send_post, 'interval', hours=POST_INTERVAL_HOURS, args=[app])
     scheduler.start()
 
     logging.info("Бот запущен. Ожидание задач...")
+    await app.run_polling()  # оставляем на случай, если захочешь добавить хендлеры
 
-    # Поддержание работы
-    try:
-        while True:
-            time.sleep(10)
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        logging.info("Бот остановлен.")
+if __name__ == "__main__":
+    asyncio.run(main())
