@@ -10,7 +10,7 @@ import os
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-CHANNELS = ['@your_math_channel', '@your_inf_channel']
+CHANNELS = ['@repkdsmat', '@repkdsinf']
 
 openai.api_key = OPENAI_API_KEY
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -47,12 +47,14 @@ def generate_post():
 
 # ========== ОТПРАВКА ==========
 def send_post():
+    logging.info(f"Генерируется пост...")
     post = generate_post()
     if post:
         for channel in CHANNELS:
             try:
                 bot.send_message(chat_id=channel, text=post)
                 logging.info(f"Отправлено в {channel}")
+                logging.info(f"Содержание поста:\n{post}")
             except Exception as e:
                 logging.error(f"Ошибка отправки в {channel}: {e}")
     else:
