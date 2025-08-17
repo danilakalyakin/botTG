@@ -39,7 +39,7 @@ def generate_post():
 
     try:
         response = client.chat.completions.create(
-            model="openchat/openchat-3.5-1210",
+            model="mistralai/mistral-7b-instruct",
             messages=messages,
             temperature=0.7
         )
