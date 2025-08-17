@@ -1,3 +1,5 @@
+from flask import Flask
+import threading
 import logging
 import openai
 import random
@@ -5,6 +7,30 @@ from telegram import Bot
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Бот работает"
+
+def run_scheduler():
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(send_post, 'interval', seconds=10)
+    scheduler.start()
+    logging.info("Бот запущен и планировщик активирован.")
+    while True:
+        time.sleep(10)
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    # Запускаем планировщик в отдельном потоке
+    threading.Thread(target=run_scheduler).start()
+
+    # Запускаем фейковый веб-сервер на порту, который ожидает Render
+    port = int(os.environ.get("PORT", 10000))  # Render подставит переменную PORT
+    app.run(host="0.0.0.0", port=port)
 
 # ========== НАСТРОЙКИ ==========
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
