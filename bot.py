@@ -1,14 +1,12 @@
 import logging
 import openai
 import random
-import asyncio
+from telegram import Bot
+from apscheduler.schedulers.background import BackgroundScheduler
+import time
 import os
 
-from telegram import Bot
-from telegram.ext import ApplicationBuilder
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-# === НАСТРОЙКИ ===
+# ========== НАСТРОЙКИ ==========
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
@@ -16,12 +14,11 @@ CHANNELS = ['@your_math_channel', '@your_inf_channel']
 POST_INTERVAL_HOURS = 2
 
 openai.api_key = OPENAI_API_KEY
-logging.basicConfig(level=logging.INFO)
+bot = Bot(token=TELEGRAM_TOKEN)
 
-# === СТИЛЬ ===
+# ========== СТИЛЬ ОБУЧЕНИЯ ==========
 STYLE_MESSAGES = [
-    {"role": "system",
-     "content": "Ты опытный преподаватель математики и информатики. Пиши простые, полезные и понятные посты для школьников. Используй короткие предложения, понятные примеры, иногда эмодзи."},
+    {"role": "system", "content": "Ты опытный преподаватель математики и информатики. Пиши простые, полезные и понятные посты для школьников. Используй короткие предложения, понятные примеры, иногда эмодзи."},
     {"role": "user", "content": "ХОРОШО: Если вы видите √(x²), то это не просто x, а |x|. Это важно для ЕГЭ!"},
     {"role": "user", "content": "ПЛОХО: Математика — это великая наука. Её надо учить."},
 ]
@@ -31,9 +28,8 @@ TOPICS = [
     "системы уравнений", "параметры", "логика", "таблицы истинности", "основы Python"
 ]
 
-
-# === ГЕНЕРАЦИЯ ПОСТА ===
-async def generate_post():
+# ========== ГЕНЕРАЦИЯ ПОСТА ==========
+def generate_post():
     topic = random.choice(TOPICS)
     prompt = f"Сделай короткий пост по теме: {topic} для подготовки к ЕГЭ/ОГЭ"
     messages = STYLE_MESSAGES + [{"role": "user", "content": prompt}]
@@ -50,34 +46,31 @@ async def generate_post():
         logging.error(f"Ошибка генерации: {e}")
         return None
 
-
-# === ОТПРАВКА ===
-async def send_post():
-    post = await generate_post()
+# ========== ОТПРАВКА ==========
+def send_post():
+    post = generate_post()
     if post:
         for channel in CHANNELS:
             try:
-                await bot.send_message(chat_id=channel, text=post)
+                bot.send_message(chat_id=channel, text=post)
                 logging.info(f"Отправлено в {channel}")
             except Exception as e:
                 logging.error(f"Ошибка отправки в {channel}: {e}")
     else:
         logging.warning("Пост не сгенерирован.")
 
-
-# === ГЛАВНАЯ ТОЧКА ===
-async def main():
-    global bot
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    bot = app.bot
-
-    scheduler = AsyncIOScheduler()
+# ========== ЗАПУСК ==========
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    scheduler = BackgroundScheduler()
     scheduler.add_job(send_post, 'interval', hours=POST_INTERVAL_HOURS)
     scheduler.start()
 
     logging.info("Бот запущен и планировщик активирован.")
-    await app.run_polling()  # можно убрать, если бот только рассылает, без хендлеров
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        while True:
+            time.sleep(10)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
+        logging.info("Бот остановлен.")
