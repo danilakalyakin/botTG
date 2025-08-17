@@ -6,20 +6,17 @@ import threading
 from flask import Flask
 from telegram import Bot
 from apscheduler.schedulers.background import BackgroundScheduler
-import openai
+from openai import OpenAI
 
 # ========== НАСТРОЙКИ ==========
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHANNELS = ['@repkdsmat', '@repkdsinf']
 
-# Настройка OpenRouter
-openai.api_key = OPENROUTER_API_KEY
-openai.base_url = "https://openrouter.ai/api/v1"
-
-# Можно использовать бесплатную модель, например:
-MODEL = "mistralai/mistral-7b-instruct"
-
+client = OpenAI(
+    api_key=OPENROUTER_API_KEY,
+    base_url="https://openrouter.ai/api/v1"
+)
 bot = Bot(token=TELEGRAM_TOKEN)
 
 # ========== СТИЛЬ ОБУЧЕНИЯ ==========
@@ -41,12 +38,12 @@ def generate_post():
     messages = STYLE_MESSAGES + [{"role": "user", "content": prompt}]
 
     try:
-        response = openai.ChatCompletion.create(
-            model=MODEL,
+        response = client.chat.completions.create(
+            model="openchat/openchat-3.5-1210",  # Бесплатная модель
             messages=messages,
             temperature=0.7
         )
-        return response.choices[0].message["content"]
+        return response.choices[0].message.content
     except Exception as e:
         logging.error(f"Ошибка генерации: {e}")
         return None
@@ -83,6 +80,10 @@ def run_scheduler():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+
+    # Запускаем планировщик в отдельном потоке
     threading.Thread(target=run_scheduler).start()
+
+    # Запускаем веб-сервер
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
