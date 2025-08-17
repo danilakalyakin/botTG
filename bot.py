@@ -4,19 +4,21 @@ import random
 import asyncio
 import os
 
+from telegram import Bot
 from telegram.ext import ApplicationBuilder
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# ========== НАСТРОЙКИ ==========
+# === НАСТРОЙКИ ===
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-CHANNELS = ['@your_math_channel', '@your_inf_channel']  # Список каналов
+CHANNELS = ['@your_math_channel', '@your_inf_channel']
 POST_INTERVAL_HOURS = 2
 
 openai.api_key = OPENAI_API_KEY
+logging.basicConfig(level=logging.INFO)
 
-# ========== СТИЛЬ ОБУЧЕНИЯ ==========
+# === СТИЛЬ ===
 STYLE_MESSAGES = [
     {"role": "system",
      "content": "Ты опытный преподаватель математики и информатики. Пиши простые, полезные и понятные посты для школьников. Используй короткие предложения, понятные примеры, иногда эмодзи."},
@@ -30,8 +32,8 @@ TOPICS = [
 ]
 
 
-# ========== ФУНКЦИЯ ГЕНЕРАЦИИ ПОСТА ==========
-def generate_post():
+# === ГЕНЕРАЦИЯ ПОСТА ===
+async def generate_post():
     topic = random.choice(TOPICS)
     prompt = f"Сделай короткий пост по теме: {topic} для подготовки к ЕГЭ/ОГЭ"
     messages = STYLE_MESSAGES + [{"role": "user", "content": prompt}]
@@ -49,13 +51,13 @@ def generate_post():
         return None
 
 
-# ========== АСИНХРОННАЯ ФУНКЦИЯ ОТПРАВКИ ==========
-async def send_post(app):
-    post = generate_post()
+# === ОТПРАВКА ===
+async def send_post():
+    post = await generate_post()
     if post:
         for channel in CHANNELS:
             try:
-                await app.bot.send_message(chat_id=channel, text=post)
+                await bot.send_message(chat_id=channel, text=post)
                 logging.info(f"Отправлено в {channel}")
             except Exception as e:
                 logging.error(f"Ошибка отправки в {channel}: {e}")
@@ -63,19 +65,19 @@ async def send_post(app):
         logging.warning("Пост не сгенерирован.")
 
 
-# ========== ОСНОВНАЯ ТОЧКА ЗАПУСКА ==========
+# === ГЛАВНАЯ ТОЧКА ===
 async def main():
-    logging.basicConfig(level=logging.INFO)
-
+    global bot
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    bot = app.bot
 
-    # Планировщик с асинхронной задачей
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(send_post, 'interval', hours=POST_INTERVAL_HOURS, args=[app])
+    scheduler.add_job(send_post, 'interval', hours=POST_INTERVAL_HOURS)
     scheduler.start()
 
-    logging.info("Бот запущен. Ожидание задач...")
-    await app.run_polling()  # оставляем на случай, если захочешь добавить хендлеры
+    logging.info("Бот запущен и планировщик активирован.")
+    await app.run_polling()  # можно убрать, если бот только рассылает, без хендлеров
+
 
 if __name__ == "__main__":
     asyncio.run(main())
