@@ -39,14 +39,15 @@ def generate_post():
 
     try:
         response = client.chat.completions.create(
-            model="openchat/openchat-3.5-1210",  # Бесплатная модель
+            model="openchat/openchat-3.5-1210",
             messages=messages,
             temperature=0.7
         )
-        return response.choices[0].message.content
+        return response.choices[0].message['content']
     except Exception as e:
         logging.error(f"Ошибка генерации: {e}")
         return None
+
 
 # ========== ОТПРАВКА ==========
 def send_post():
