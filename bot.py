@@ -11,7 +11,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 CHANNELS = ['@your_math_channel', '@your_inf_channel']
-POST_INTERVAL_HOURS = 2
 
 openai.api_key = OPENAI_API_KEY
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -63,7 +62,7 @@ def send_post():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     scheduler = BackgroundScheduler()
-    scheduler.add_job(send_post, 'interval', hours=POST_INTERVAL_HOURS)
+    scheduler.add_job(send_post, 'interval', seconds=10)
     scheduler.start()
 
     logging.info("Бот запущен и планировщик активирован.")
