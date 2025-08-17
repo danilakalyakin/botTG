@@ -1,19 +1,19 @@
 import logging
-import openai
 import random
-from telegram import Bot
-from apscheduler.schedulers.background import BackgroundScheduler
 import time
 import os
-from flask import Flask
 import threading
+from flask import Flask
+from telegram import Bot
+from apscheduler.schedulers.background import BackgroundScheduler
+import openai
 
 # ========== НАСТРОЙКИ ==========
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHANNELS = ['@repkdsmat', '@repkdsinf']
 
-openai.api_key = OPENAI_API_KEY
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 bot = Bot(token=TELEGRAM_TOKEN)
 
 # ========== СТИЛЬ ОБУЧЕНИЯ ==========
@@ -35,12 +35,12 @@ def generate_post():
     messages = STYLE_MESSAGES + [{"role": "user", "content": prompt}]
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages,
             temperature=0.7
         )
-        content = response['choices'][0]['message']['content']
+        content = response.choices[0].message.content
         return content
     except Exception as e:
         logging.error(f"Ошибка генерации: {e}")
@@ -82,6 +82,6 @@ if __name__ == "__main__":
     # Запускаем планировщик в отдельном потоке
     threading.Thread(target=run_scheduler).start()
 
-    # Запускаем фейковый веб-сервер
+    # Запускаем веб-сервер
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
